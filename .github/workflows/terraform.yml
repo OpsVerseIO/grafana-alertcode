@@ -1,0 +1,56 @@
+name: Terraform
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository to the GitHub Actions runner
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      # Set up AWS credentials for Terraform backend (using GitHub Secrets)
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}  # Ensure AWS_REGION is set in GitHub Secrets
+
+      # Install the latest version of Terraform CLI
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: "1.4.0"  # Optional: specify the Terraform version
+
+      # Set Grafana credentials as environment variables
+      - name: Set Grafana Credentials
+        run: |
+          echo "GRAFANA_USERNAME=${{ secrets.GRAFANA_USERNAME }}" >> $GITHUB_ENV
+          echo "GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}" >> $GITHUB_ENV
+
+      # Change directory to the terraform directory and initialize Terraform
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      # Previews the changes that Terraform will make
+      - name: Plan Terraform
+        working-directory: ./terraform
+        id: plan
+        run: terraform plan -input=false -no-color -var="grafana_username=${{ secrets.GRAFANA_USERNAME }}" -var="grafana_password=${{ secrets.GRAFANA_PASSWORD }}"
+
+      # Applies the terraform configuration files when the branch is `main`
+      - name: Apply Terraform
+        if: github.ref == 'refs/heads/main'
+        working-directory: ./terraform
+        id: apply
+        run: terraform apply -auto-approve -var="grafana_username=${{ secrets.GRAFANA_USERNAME }}" -var="grafana_password=${{ secrets.GRAFANA_PASSWORD }}"
