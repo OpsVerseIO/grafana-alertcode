@@ -15,6 +15,58 @@ terraform/
 
 ## Prerequisites and Configuration
 
+
+## 🔐 AWS Setup Prerequisites
+
+### 1. S3 Bucket Creation
+1. Go to AWS Console → Services → S3
+2. Click "Create bucket"
+3. Configure:
+   - Bucket name: `your-terraform-state-bucket`
+   - Region: `us-west-2`
+   - Enable Versioning: ✅
+   - Enable server-side encryption: ✅
+   - Block all public access: ✅
+   - Click "Create bucket"
+
+### 2. IAM Policy Creation
+1. Go to AWS Console → Services → IAM → Policies
+2. Click "Create policy"
+3. Use JSON editor and paste:
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket"
+            ],
+            "Resource": "arn:aws:s3:::your-terraform-state-bucket"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": "arn:aws:s3:::your-terraform-state-bucket/folder-name/terraform.tfstate"
+        }
+    ]
+}
+```
+4. Name: `TerraformStatePolicyDevopsNow`
+
+### 3. Service Account Creation
+1. Go to AWS Console → Services → IAM → Users
+2. Create user:
+   - Name: `terraform-state-bot`
+   - Access type: Programmatic access
+3. Attach the `TerraformStatePolicy` policy
+4. Go to view user and generate the Access key , save it
+
+
 ### GitHub Repository Setup
 
 #### Required GitHub Secrets
@@ -34,7 +86,7 @@ Configure the following secrets in your repository settings:
 terraform {
   backend "s3" {
     bucket         = "your-terraform-state-bucket"
-    key            = "grafana/alerting/terraform.tfstate"
+    key            = "folder-name/terraform.tfstate"
     region         = "us-west-2"
     encrypt        = true
   }
